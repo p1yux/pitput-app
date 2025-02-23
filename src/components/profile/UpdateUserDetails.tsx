@@ -1,6 +1,6 @@
 import { getAccessToken } from "@/utils/auth";
 import React, { useState } from "react";
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 type UpdateUserDetailsProps = {
@@ -57,7 +57,7 @@ const UpdateUserDetails: React.FC<UpdateUserDetailsProps> = (props) => {
       } else {
         toast.error("Failed to update user details.");
       }
-    } catch (error) {
+    } catch {
       toast.error("An error occurred while updating user details.");
     } finally {
       setLoading(false);

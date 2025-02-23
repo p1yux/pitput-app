@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { getAccessToken } from "@/utils/auth";
@@ -16,13 +16,46 @@ const EmailVerification = () => {
   const [canResendOtp, setCanResendOtp] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number>(60);
 
+  const sendEmailOtp = useCallback(
+    async (authToken?: string | null) => {
+      const currentToken = authToken || token;
+      if (!currentToken) {
+        toast.error("Authentication token missing");
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/v1/user/send-email-otp`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${currentToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        toast.success("OTP sent successfully");
+        setCanResendOtp(false);
+        setCountdown(60);
+      } catch (error) {
+        console.error("Error sending OTP:", error);
+        toast.error("Failed to send OTP. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [token]
+  );
+
   useEffect(() => {
     const accessToken = getAccessToken();
     if (accessToken) {
       setToken(accessToken);
       sendEmailOtp(accessToken);
     }
-  }, []);
+  }, [sendEmailOtp]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -33,36 +66,6 @@ const EmailVerification = () => {
     }
     return () => clearTimeout(timer);
   }, [countdown]);
-
-  const sendEmailOtp = async (authToken?: string | null) => {
-    const currentToken = authToken || token;
-    if (!currentToken) {
-      toast.error("Authentication token missing");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/v1/user/send-email-otp`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${currentToken}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-      toast.success("OTP sent successfully");
-      setCanResendOtp(false);
-      setCountdown(60);
-    } catch (error) {
-      console.error("Error sending OTP:", error);
-      toast.error("Failed to send OTP. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const verifyEmailOtp = async () => {
     if (!token) {
@@ -77,17 +80,17 @@ const EmailVerification = () => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post(
+      await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/v1/user/verify-email`,
         { otp },
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
+            "Content-Type": "application/json",
+          },
         }
       );
-      
+
       toast.success("Email verified successfully!");
       // Handle successful verification (e.g., redirect or update state)
     } catch (error) {
@@ -128,25 +131,20 @@ const EmailVerification = () => {
               className="text-center tracking-[10px] text-2xl"
             />
             <div className="flex justify-between items-center">
-              <Button 
-                variant="outline" 
-                onClick={handleResendOtp} 
+              <Button
+                variant="outline"
+                onClick={handleResendOtp}
                 disabled={!canResendOtp}
                 className="text-blue-600 hover:text-blue-700"
               >
-                {canResendOtp 
-                  ? "Resend OTP" 
-                  : `Resend in ${countdown}s`}
+                {canResendOtp ? "Resend OTP" : `Resend in ${countdown}s`}
               </Button>
-              <Button 
-                onClick={verifyEmailOtp} 
+              <Button
+                onClick={verifyEmailOtp}
                 disabled={isLoading || otp.length !== 6}
               >
                 {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verifying...
-                  </>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   "Verify"
                 )}
