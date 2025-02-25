@@ -58,14 +58,14 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
       } else {
         toast.error(response.data.message || "OTP verification failed");
       }
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        const apiError = error.response?.data;
-        toast.error(apiError?.message || "OTP verification failed");
-      } else {
-        console.error("OTP verification error:", error);
-        toast.error("OTP verification failed");
-      }
+    // } catch (error: unknown) {
+    //   if (axios.isAxiosError(error)) {
+    //     const apiError = error.response?.data;
+    //     toast.error(apiError?.message || "OTP verification failed");
+    //   } else {
+    //     console.error("OTP verification error:", error);
+    //     toast.error("OTP verification failed");
+    //   }
     } finally {
       setLoading(false);
     }
