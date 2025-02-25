@@ -1,7 +1,7 @@
 "use client";
 import { useUser } from "@/actions/UserContext/UserContext";
-import UpdateUserDetails from "@/components/profile/UpdateUserDetails";
-import EmailVerification from "@/components/profile/Verfication/EmailVerfication";
+import UpdateUserDetails from "@/components/custom/profile/UpdateUserDetails";
+import EmailVerification from "@/components/custom/profile/Verfication/EmailVerfication";
 import { useTokenRedirect } from "@/utils/FindToken";
 import React, { useState, useEffect } from "react";
 import { ToastContainer } from "react-toastify";

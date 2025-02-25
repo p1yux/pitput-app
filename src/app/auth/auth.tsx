@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import LoginPop from "@/components/auth/LoginPop"; // Import your Login component
-import RegisterPop from "@/components/auth/RegisterPop"; // Import your Register component
+import LoginPop from "@/components/custom/forms/auth/LoginForm"; // Import your Login component
+import RegisterPop from "@/components/custom/forms/auth/RegisterForm"; // Import your Register component
 
 const AuthPage = () => {
   const [showLogin, setShowLogin] = useState(true);
