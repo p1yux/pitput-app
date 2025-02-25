@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./../styles/globals.css";
-import Header from "@/components/core/header";
 import ContextLayout from "@/actions/UserContext/UserProvider";
 
 export const metadata: Metadata = {
@@ -17,7 +16,6 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ContextLayout>
-          <Header />
           <main>{children}</main>
         </ContextLayout>
       </body>

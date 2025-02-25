@@ -7,11 +7,21 @@ import { setTokens } from "@/utils/auth";
 import CloseIcon from "@mui/icons-material/Close";
 import MailIcon from "@mui/icons-material/Mail";
 import { motion } from "framer-motion";
-import { ApiError } from "@/types/error";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 interface OtpResponse {
   accessToken: string;
   refreshToken: string;
+}
+
+interface OtpVerificationResponse {
+  success: boolean;
+  message?: string;
+  tokens?: OtpResponse;
 }
 
 interface OtpVerificationProps {
@@ -25,37 +35,37 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
 }) => {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleOtpSubmit = async (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!otp || otp.length !== 6) {
-      toast.error("Please enter a valid 6-digit OTP");
-      return;
-    }
-
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await axios.post<OtpResponse>(
-        `${process.env.NEXT_PUBLIC_API_URL}/v1/auth/verify-email-otp`,
+      const response = await axios.post<OtpVerificationResponse>(
+        "/api/verify-otp",
         { email, otp }
       );
 
-      if (response.data.accessToken && response.data.refreshToken) {
+      if (response.data.success) {
+        const { accessToken, refreshToken } = response.data.tokens || {};
+        if (!accessToken || !refreshToken) {
+          throw new Error("Tokens are missing from the response");
+        }
+        setTokens(accessToken, refreshToken);
         toast.success("OTP verified successfully");
-        setTokens(response.data.accessToken, response.data.refreshToken);
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
         onClose();
+        router.push("/dashboard");
       } else {
-        throw new Error("Invalid response from server");
+        toast.error(response.data.message || "OTP verification failed");
       }
     } catch (error: unknown) {
-      const apiError = error as ApiError;
-      toast.error(
-        apiError.response?.data?.message || "OTP verification failed"
-      );
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data;
+        toast.error(apiError?.message || "OTP verification failed");
+      } else {
+        console.error("OTP verification error:", error);
+        toast.error("OTP verification failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -101,38 +111,45 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
             <span className="font-semibold">{email}</span>
           </p>
 
-          <form onSubmit={handleOtpSubmit} className="space-y-4">
-            <div className="relative">
-              <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">
-                <MailIcon />
-              </span>
-              <input
-                type="text"
-                name="otp"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                className="w-full pl-10 px-4 py-2 border shadow-md rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                placeholder="Enter OTP"
-                disabled={loading}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary text-white shadow-md font-semibold text-lg mt-4 mb-4 py-2 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Verifying...</span>
+          <Card className="relative w-full max-w-md bg-white shadow-xl rounded-2xl border-0">
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="text-xl font-semibold mt-3">
+                Verify OTP
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div className="relative">
+                  <Input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="Enter OTP"
+                    className="h-12 pl-10 bg-gray-100 border-0"
+                    required
+                  />
                 </div>
-              ) : (
-                "Verify OTP"
-              )}
-            </button>
-          </form>
+                <Separator className="my-4" />
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-black hover:bg-gray-800 text-white rounded-lg"
+                  disabled={loading}
+                >
+                  {loading ? "Verifying..." : "Verify OTP"}
+                </Button>
+              </form>
+
+              <div className="mt-4 text-center text-sm text-gray-500">
+                <span>Didn&apos;t receive the OTP? </span>
+                <button
+                  onClick={onClose}
+                  className="text-blue-500 hover:underline"
+                >
+                  Resend
+                </button>
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
       </motion.div>
     </>

@@ -1,159 +1,162 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import OtpVerification from "./OtpVerification";
-import CloseIcon from "@mui/icons-material/Close";
-import LockIcon from "@mui/icons-material/Lock";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import { motion } from "framer-motion";
-import { ApiError } from "@/types/error";
-import { Mail } from "lucide-react";
+import { toast } from "react-toastify";
+import { setTokens } from "@/utils/auth";
 
-interface RegisterPopupProps {
-  isOpen: boolean;
-  onClose: () => void;
-  setIsLoginOpen: React.Dispatch<React.SetStateAction<boolean>>;
+// shadcn components
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+
+// Lucide icons
+import { LogIn, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import GoogleIcon from "@mui/icons-material/Google";
+import { Github, Linkedin } from "lucide-react";
+
+interface RegisterResponse {
+  success: boolean;
+  message?: string;
+  tokens?: {
+    accessToken: string;
+    refreshToken: string;
+  };
 }
 
-const RegisterPopup: React.FC<RegisterPopupProps> = ({
-  isOpen,
+interface RegisterPopProps {
+  onClose: () => void;
+  onSwitchToLogin: () => void;
+}
+
+const RegisterPop: React.FC<RegisterPopProps> = ({
   onClose,
-  setIsLoginOpen,
+  onSwitchToLogin,
 }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isOtpStep, setIsOtpStep] = useState(false);
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!email || !password) {
-      toast.error("All fields are required");
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    const formData = { email, password };
-
+    setLoading(true);
     try {
-      setLoading(true);
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/v1/users/{id}`,
-        formData
+      const response = await axios.post<RegisterResponse>(
+        `${process.env.NEXT_PUBLIC_API_URL}/v1/auth/register`,
+        {
+          email,
+          password,
+        }
       );
 
-      toast.success("Registration successful");
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/v1/auth/send-otp`, {
-        email,
-      });
-      setIsOtpStep(true);
-    } catch (error: unknown) {
-      const apiError = error as ApiError;
-      toast.error(apiError.response?.data?.message || "Registration failed");
+      if (response.data.success) {
+        const { accessToken, refreshToken } = response.data.tokens || {};
+        if (!accessToken || !refreshToken) {
+          throw new Error("Tokens are missing from the response");
+        }
+        setTokens(accessToken, refreshToken);
+        toast.success("Registration successful");
+        onClose();
+        router.push("/login");
+      } else {
+        toast.error(response.data.message || "Registration failed");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error("Registration failed");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <ToastContainer />
-      {isOtpStep ? (
-        <OtpVerification email={email} onClose={onClose} />
-      ) : (
-        <motion.div
-          initial={{ y: -20 }}
-          animate={{ y: 0 }}
-          className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm relative"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-primary transition-colors"
-          >
-            <CloseIcon />
-          </button>
-
-          <div className="flex flex-col items-center mb-6">
-            <div className="bg-primary-light/20 p-3 rounded-full mb-4">
-              <PersonAddIcon className="text-primary text-3xl" />
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-800">
-              Create Account
-            </h2>
-            <button
-              onClick={() => {
-                onClose();
-                setIsLoginOpen(true);
-              }}
-              className="text-gray-500 text-sm mt-1"
-            >
-              Sign up to get started
-            </button>
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-md z-50">
+      <Card className="relative w-full max-w-md bg-white shadow-xl rounded-2xl border-0">
+        <CardHeader className="text-center pb-2">
+          <div className="bg-gray-100 p-2 rounded-full inline-flex items-center justify-center mx-auto">
+            <LogIn className="h-5 w-5 text-gray-700" />
           </div>
-
+          <CardTitle className="text-xl font-semibold mt-3">
+            Create an account
+          </CardTitle>
+          <p className="text-sm text-gray-500 mt-1">
+            Make a new doc to bring your words, data, and team together. For
+            free
+          </p>
+        </CardHeader>
+        <CardContent className="px-6 pb-6">
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
+              <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 placeholder="Email"
+                className="h-12 pl-10 bg-gray-100 border-0"
+                required
               />
+              <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
             </div>
-
             <div className="relative">
-              <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="password"
+              <Input
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 placeholder="Password"
+                className="h-12 pl-10 pr-10 bg-gray-100 border-0"
+                required
               />
+              <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-gray-400"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-
-            <button
+            <Separator className="my-4" />
+            <Button
               type="submit"
+              className="w-full h-12 bg-black hover:bg-gray-800 text-white rounded-lg"
               disabled={loading}
-              className="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center justify-center space-x-2"
             >
-              {loading ? (
-                <div className="flex items-center space-x-2">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Creating Account...</span>
-                </div>
-              ) : (
-                <span>Create Account</span>
-              )}
-            </button>
+              {loading ? "Creating account..." : "Get Started"}
+            </Button>
           </form>
-        </motion.div>
-      )}
-    </motion.div>
+
+          <div className="mt-4 text-center text-sm text-gray-500">
+            <span>Already have an account? </span>
+            <button
+              onClick={onSwitchToLogin}
+              className="text-blue-500 hover:underline"
+            >
+              Sign in
+            </button>
+          </div>
+
+          <div className="mt-4 text-center text-sm text-gray-500">
+            <span>Or sign up with</span>
+          </div>
+
+          <div className="flex justify-center gap-4 mt-4">
+            <button className="p-3 rounded-full border border-gray-200 flex items-center justify-center">
+              <GoogleIcon className="h-6 w-6" />
+            </button>
+            <button className="p-3 rounded-full border border-gray-200 flex items-center justify-center">
+              <Github className="h-6 w-6" />
+            </button>
+            <button className="p-3 rounded-full border border-gray-200 flex items-center justify-center">
+              <Linkedin className="h-6 w-6" />
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
-export default RegisterPopup;
+export default RegisterPop;
